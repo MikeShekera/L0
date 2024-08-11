@@ -1,7 +1,7 @@
-package ServerPart
+package services
 
 import (
-	"02.08.2024-L0/OrderJsonStructure"
+	"02.08.2024-L0/models"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -33,10 +33,10 @@ type PageData struct {
 }
 
 type CacheHandler struct {
-	Cache map[string]*OrderJsonStructure.Order
+	Cache map[string]*models.Order
 }
 
-func StartupServ(cache map[string]*OrderJsonStructure.Order) {
+func StartupServ(cache map[string]*models.Order) {
 	handler := CacheHandler{Cache: cache}
 	http.Handle("/", handler)
 	http.ListenAndServe(":8080", nil)

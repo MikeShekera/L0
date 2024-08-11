@@ -1,7 +1,7 @@
 package main
 
 import (
-	"02.08.2024-L0/ServerPart"
+	"02.08.2024-L0/services"
 	"fmt"
 	"log"
 	"os"
@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	jsonPath = "E:\\Go\\02.08.2024-L0\\JsonPublisher\\jsons"
+	jsonPath = "publisher/jsons"
 	clientID = "jsonPublisher"
 )
 
@@ -48,13 +48,14 @@ func getJSONs() error {
 }
 
 func sendJSONs(jsonList [][]byte) {
-	err, sc := ServerPart.ConnectNats(clientID)
+	err, sc := services.ConnectNats(clientID)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer sc.Close()
 
 	for _, json := range jsonList {
-		ServerPart.PublishNATS(sc, "foo", json)
+		services.PublishNATS(sc, "foo", json)
+		fmt.Println(json)
 	}
 }

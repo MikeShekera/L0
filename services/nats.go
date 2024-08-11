@@ -1,4 +1,4 @@
-package ServerPart
+package services
 
 import (
 	"fmt"

@@ -1,4 +1,4 @@
-package OrderJsonStructure
+package models
 
 type Delivery struct {
 	Name    string `json:"name"`

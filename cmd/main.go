@@ -1,8 +1,9 @@
 package main
 
 import (
-	"02.08.2024-L0/OrderJsonStructure"
-	"02.08.2024-L0/ServerPart"
+	"02.08.2024-L0/database"
+	"02.08.2024-L0/models"
+	"02.08.2024-L0/services"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -18,7 +19,7 @@ const (
 type AppStash struct {
 	DbConn      *sql.DB
 	NatsConn    stan.Conn
-	OrdersCache map[string]*OrderJsonStructure.Order
+	OrdersCache map[string]*models.Order
 }
 
 func main() {
@@ -28,51 +29,49 @@ func main() {
 	}
 	defer appStash.closeAllConnections()
 
-	err = ServerPart.StartupCacheFromDB(appStash.DbConn, appStash.OrdersCache)
+	err = database.StartupCacheFromDB(appStash.DbConn, appStash.OrdersCache)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = ServerPart.SubscribeNATS(appStash.NatsConn, appStash.getData)
+	err = services.SubscribeNATS(appStash.NatsConn, appStash.getData)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	ServerPart.StartupServ(appStash.OrdersCache)
-
-	select {}
+	services.StartupServ(appStash.OrdersCache)
 }
 
 func (appStash *AppStash) getData(m *stan.Msg) {
-	var order OrderJsonStructure.Order
+	var order models.Order
 	err := json.Unmarshal(m.Data, &order)
 	if err != nil {
 		fmt.Printf("%s, skipping \n", err)
 		return
 	}
 
-	err = ServerPart.WriteToDB(appStash.DbConn, order)
+	err = database.WriteToDB(appStash.DbConn, order)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
 func newAppStash() (error, *AppStash) {
-	err, db := ServerPart.ConnectDB()
+	err, db := database.ConnectDB()
 	if err != nil {
 		return err, nil
 	}
 
-	err, sc := ServerPart.ConnectNats(clientID)
+	err, sc := services.ConnectNats(clientID)
 	if err != nil {
 		return err, nil
 	}
 
-	err, uidsCount := ServerPart.GetUIDsCount(db)
+	err, uidsCount := database.GetUIDsCount(db)
 	if err != nil {
 		log.Fatal(err)
 	}
-	ordersCache := make(map[string]*OrderJsonStructure.Order, uidsCount)
+	ordersCache := make(map[string]*models.Order, uidsCount)
 
 	return nil, &AppStash{DbConn: db, NatsConn: sc, OrdersCache: ordersCache}
 }

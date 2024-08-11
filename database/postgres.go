@@ -1,7 +1,7 @@
-package ServerPart
+package database
 
 import (
-	"02.08.2024-L0/OrderJsonStructure"
+	"02.08.2024-L0/models"
 	"database/sql"
 	"fmt"
 	"log"
@@ -190,7 +190,7 @@ func ConnectDB() (error, *sql.DB) {
 	return nil, db
 }
 
-func WriteToDB(db *sql.DB, order OrderJsonStructure.Order) error {
+func WriteToDB(db *sql.DB, order models.Order) error {
 	_, err := db.Exec(
 		ordersInsertString, order.OrderUID, order.TrackNumber, order.Entry, order.Locale, order.InternalSignature,
 		order.CustomerID, order.DeliveryService, order.ShardKey, order.SmID, order.DateCreated, order.OofShard,
@@ -240,7 +240,7 @@ func GetUIDsCount(db *sql.DB) (error, int64) {
 	return nil, ordersCount
 }
 
-func StartupCacheFromDB(db *sql.DB, cacheMap map[string]*OrderJsonStructure.Order) error {
+func StartupCacheFromDB(db *sql.DB, cacheMap map[string]*models.Order) error {
 	rows, err := db.Query(receiveAllDataString)
 	if err != nil {
 		log.Fatal(err)
@@ -248,7 +248,7 @@ func StartupCacheFromDB(db *sql.DB, cacheMap map[string]*OrderJsonStructure.Orde
 	defer rows.Close()
 
 	for rows.Next() {
-		var order OrderJsonStructure.Order
+		var order models.Order
 		err := rows.Scan(
 			&order.OrderUID, &order.TrackNumber, &order.Entry,
 			&order.Locale, &order.InternalSignature, &order.CustomerID,
@@ -270,13 +270,13 @@ func StartupCacheFromDB(db *sql.DB, cacheMap map[string]*OrderJsonStructure.Orde
 	return nil
 }
 
-func getItemsByOrderID(db *sql.DB, data *OrderJsonStructure.Order) {
+func getItemsByOrderID(db *sql.DB, data *models.Order) {
 	rows, err := db.Query(recieveItemsString, data.OrderUID)
 	if err != nil {
 		log.Fatal(err)
 	}
 	for rows.Next() {
-		var item OrderJsonStructure.Item
+		var item models.Item
 		var unusedValue string
 		err := rows.Scan(
 			&unusedValue,
