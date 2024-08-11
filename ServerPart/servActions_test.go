@@ -12,13 +12,25 @@ type NATSMock struct {
 }
 
 func (m *NATSMock) Subscribe(subject string, cb stan.MsgHandler, opts ...stan.SubscriptionOption) (stan.Subscription, error) {
-	//TODO implement me
-	panic("implement me")
+	args := m.Called(subject, cb, opts)
+	return nil, args.Error(0)
 }
 
 func (m *NATSMock) Publish(subj string, data []byte) error {
 	args := m.Called(subj, data)
 	return args.Error(0)
+}
+
+func TestSubscribeNATS(t *testing.T) {
+	mockConn := new(NATSMock)
+	mockConn.On("Subscribe", "foo", mock.Anything, mock.Anything).Return(nil)
+
+	err := SubscribeNATS(mockConn, func(m *stan.Msg) {})
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	mockConn.AssertExpectations(t)
 }
 
 func TestConnectNats(t *testing.T) {
@@ -30,7 +42,7 @@ func TestConnectNats(t *testing.T) {
 
 func TestPublishNATS(t *testing.T) {
 	mockConn := new(NATSMock)
-	mockConn.On("Publish", "test-subject", []byte("test-message")).Return()
+	mockConn.On("Publish", "test-subject", []byte("test-message")).Return(nil)
 
 	PublishNATS(mockConn, "test-subject", []byte("test-message"))
 

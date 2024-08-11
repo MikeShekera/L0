@@ -81,15 +81,3 @@ func (appStash *AppStash) closeAllConnections() {
 	appStash.DbConn.Close()
 	appStash.NatsConn.Close()
 }
-
-/*
-func getJSONFromCache(cacheMap map[string]*OrderJsonStructure.Order, orderUID string) (error, []byte) {
-	if v, ok := cacheMap[orderUID]; ok {
-		data, err := json.Marshal(&v)
-		if err != nil {
-			return err, nil
-		}
-		return nil, data
-	}
-	return nil, nil
-}*/
