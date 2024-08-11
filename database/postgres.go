@@ -1,9 +1,9 @@
 package database
 
 import (
-	"02.08.2024-L0/models"
 	"database/sql"
 	"fmt"
+	"github.com/MikeShekera/L0/models"
 	"log"
 )
 

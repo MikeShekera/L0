@@ -1,7 +1,6 @@
-package testdata
+package services
 
 import (
-	"02.08.2024-L0/services"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/stan.go"
 	"github.com/stretchr/testify/mock"
@@ -26,7 +25,7 @@ func TestSubscribeNATS(t *testing.T) {
 	mockConn := new(NATSMock)
 	mockConn.On("Subscribe", "foo", mock.Anything, mock.Anything).Return(nil)
 
-	err := services.SubscribeNATS(mockConn, func(m *stan.Msg) {})
+	err := SubscribeNATS(mockConn, func(m *stan.Msg) {})
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -35,7 +34,7 @@ func TestSubscribeNATS(t *testing.T) {
 }
 
 func TestConnectNats(t *testing.T) {
-	err, _ := services.ConnectNats("test-client")
+	err, _ := ConnectNats("test-client")
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -45,7 +44,7 @@ func TestPublishNATS(t *testing.T) {
 	mockConn := new(NATSMock)
 	mockConn.On("Publish", "test-subject", []byte("test-message")).Return(nil)
 
-	services.PublishNATS(mockConn, "test-subject", []byte("test-message"))
+	PublishNATS(mockConn, "test-subject", []byte("test-message"))
 
 	mockConn.AssertExpectations(t)
 }

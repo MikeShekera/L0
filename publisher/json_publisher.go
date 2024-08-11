@@ -1,8 +1,8 @@
 package main
 
 import (
-	"02.08.2024-L0/services"
 	"fmt"
+	"github.com/MikeShekera/L0/services"
 	"log"
 	"os"
 	"path/filepath"
@@ -15,7 +15,10 @@ const (
 )
 
 func main() {
-	getJSONs()
+	err := getJSONs()
+	if err != nil {
+		log.Fatal(err)
+	}
 	time.Sleep(2 * time.Second)
 }
 

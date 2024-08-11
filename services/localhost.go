@@ -1,9 +1,9 @@
 package services
 
 import (
-	"02.08.2024-L0/models"
 	"encoding/json"
 	"fmt"
+	"github.com/MikeShekera/L0/models"
 	"html/template"
 	"log"
 	"net/http"

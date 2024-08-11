@@ -1,4 +1,4 @@
-module 02.08.2024-L0
+module  github.com/MikeShekera/L0
 
 go 1.22
 

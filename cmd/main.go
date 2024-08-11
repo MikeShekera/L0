@@ -1,12 +1,12 @@
 package main
 
 import (
-	"02.08.2024-L0/database"
-	"02.08.2024-L0/models"
-	"02.08.2024-L0/services"
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/MikeShekera/L0/database"
+	"github.com/MikeShekera/L0/models"
+	"github.com/MikeShekera/L0/services"
 	_ "github.com/lib/pq"
 	"github.com/nats-io/stan.go"
 	"log"
