@@ -24,14 +24,9 @@ func main() {
 
 func getJSONs() error {
 
-	f, err := os.Open(jsonPath)
+	files, err := os.ReadDir(jsonPath)
 	if err != nil {
-		return err
-	}
-
-	files, err := f.Readdir(0)
-	if err != nil {
-		return err
+		log.Fatal(err)
 	}
 
 	var jsonList [][]byte
@@ -58,7 +53,10 @@ func sendJSONs(jsonList [][]byte) {
 	defer sc.Close()
 
 	for _, json := range jsonList {
-		services.PublishNATS(sc, "foo", json)
-		fmt.Println(json)
+		err = services.PublishNATS(sc, "foo", json)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
 	}
 }

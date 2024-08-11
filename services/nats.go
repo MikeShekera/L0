@@ -3,7 +3,6 @@ package services
 import (
 	"fmt"
 	"github.com/nats-io/stan.go"
-	"log"
 )
 
 const (
@@ -30,9 +29,10 @@ func SubscribeNATS(sc stan.Conn, receiveFunc func(m *stan.Msg)) error {
 	return nil
 }
 
-func PublishNATS(sc stan.Conn, subj string, data []byte) {
+func PublishNATS(sc stan.Conn, subj string, data []byte) error {
 	err := sc.Publish(subj, data)
 	if err != nil {
-		log.Fatalf("Error publishing message: %v", err)
+		return err
 	}
+	return nil
 }

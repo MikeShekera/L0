@@ -3,7 +3,7 @@ package services
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/MikeShekera/L0/models"
+	"github.com/MikeShekera/L0/transport"
 	"html/template"
 	"log"
 	"net/http"
@@ -33,11 +33,11 @@ type PageData struct {
 }
 
 type CacheHandler struct {
-	Cache map[string]*models.Order
+	Stash *transport.AppStash
 }
 
-func StartupServ(cache map[string]*models.Order) {
-	handler := CacheHandler{Cache: cache}
+func StartupServ(stash *transport.AppStash) {
+	handler := CacheHandler{Stash: stash}
 	http.Handle("/", handler)
 	http.ListenAndServe(":8080", nil)
 }
@@ -46,10 +46,10 @@ func (cacheHandler CacheHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	if r.Method == http.MethodPost {
 		input := r.FormValue("inputText")
 		var output string
-		if val, ok := cacheHandler.Cache[input]; ok {
+		if val, ok := cacheHandler.Stash.OrdersCache[input]; ok {
 			jsonString, err := json.Marshal(val)
 			if err != nil {
-				log.Fatal(err)
+				log.Println(err)
 				return
 			} else {
 				output = fmt.Sprintf(string(jsonString))

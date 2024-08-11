@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/MikeShekera/L0/models"
-	"log"
 )
 
 const (
@@ -15,6 +14,7 @@ const (
 	dbname   = "L0"
 
 	ordersInsertString = `
+		BEGIN ;
         INSERT INTO orders (order_uid, track_number, entry, locale, internal_signature, customer_id, delivery_service, shardkey, sm_id, date_created, oof_shard) 
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         ON CONFLICT (order_uid) DO UPDATE SET 
@@ -28,9 +28,11 @@ const (
             sm_id = EXCLUDED.sm_id,
             date_created = EXCLUDED.date_created,
             oof_shard = EXCLUDED.oof_shard;
+			COMMIT ;
     `
 
 	deliveryInsertString = `
+		BEGIN ;
         INSERT INTO delivery (order_uid, name, phone, zip, city, address, region, email)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         ON CONFLICT (order_uid) DO UPDATE SET 
@@ -41,9 +43,11 @@ const (
             address = EXCLUDED.address,
             region = EXCLUDED.region,
             email = EXCLUDED.email;
+		COMMIT ;
     `
 
 	paymentInsertString = `
+		BEGIN ;
         INSERT INTO payment (order_uid, transaction, request_id, currency, provider, amount, payment_dt, bank, delivery_cost, goods_total, custom_fee)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         ON CONFLICT (order_uid) DO 
@@ -59,9 +63,11 @@ const (
             delivery_cost = EXCLUDED.delivery_cost,
             goods_total = EXCLUDED.goods_total,
             custom_fee = EXCLUDED.custom_fee;
+		COMMIT ;
     `
 
 	itemsInsertString = `
+			BEGIN ;		
             INSERT INTO items (order_uid, chrt_id, track_number, price, rid, name, sale, size, total_price, nm_id, brand, status)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
             ON CONFLICT (order_uid, chrt_id) DO 
@@ -77,66 +83,12 @@ const (
                 nm_id = EXCLUDED.nm_id,
                 brand = EXCLUDED.brand,
                 status = EXCLUDED.status;
+			COMMIT ;
         `
 
-	receiveCustomIDString = `SELECT 
-        o.order_uid,
-        o.track_number,
-        o.entry,
-        o.locale,
-        o.internal_signature,
-        o.customer_id,
-        o.delivery_service,
-        o.shardkey,
-        o.sm_id,
-        o.date_created,
-        o.oof_shard,
-        
-        d.name,
-        d.phone,
-        d.zip,
-        d.city,
-        d.address,
-        d.region,
-        d.email,
-        
-        p.transaction,
-        p.request_id,
-        p.currency,
-        p.provider,
-        p.amount,
-        p.payment_dt,
-        p.bank,
-        p.delivery_cost,
-        p.goods_total,
-        p.custom_fee,
-          
-		i.chrt_id,
-		i.track_number AS item_track_number,
-		i.price,
-		i.rid,
-		i.name AS item_name,
-		i.sale,
-		i.size,
-		i.total_price,
-		i.nm_id,
-		i.brand,
-		i.status
-	
-	FROM 
-		orders o
-	LEFT JOIN 
-		delivery d ON o.order_uid = d.order_uid
-	LEFT JOIN 
-		payment p ON o.order_uid = p.order_uid
-	LEFT JOIN 
-		items i ON o.order_uid = i.order_uid
-	WHERE 
-		o.order_uid = $1;`
+	recieveAllItemsString = `SELECT * FROM items`
 
-	recieveItemsString = `SELECT * FROM items WHERE order_uid = $1`
-
-	receiveAllDataString = `SELECT 
+	receiveAllOrdersString = `SELECT 
     o.order_uid,
     o.track_number,
     o.entry,
@@ -240,16 +192,16 @@ func GetUIDsCount(db *sql.DB) (error, int64) {
 	return nil, ordersCount
 }
 
-func StartupCacheFromDB(db *sql.DB, cacheMap map[string]*models.Order) error {
-	rows, err := db.Query(receiveAllDataString)
+func StartupCacheFromDB(db *sql.DB, cacheMap map[string]models.Order, ordersCount int64) error {
+	rows, err := db.Query(receiveAllOrdersString)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		var order models.Order
-		err := rows.Scan(
+		err = rows.Scan(
 			&order.OrderUID, &order.TrackNumber, &order.Entry,
 			&order.Locale, &order.InternalSignature, &order.CustomerID,
 			&order.DeliveryService, &order.ShardKey, &order.SmID,
@@ -262,32 +214,52 @@ func StartupCacheFromDB(db *sql.DB, cacheMap map[string]*models.Order) error {
 			&order.Payment.Bank, &order.Payment.DeliveryCost, &order.Payment.GoodsTotal, &order.Payment.CustomFee,
 		)
 		if err != nil {
-			return err
+			continue
 		}
-		cacheMap[order.OrderUID] = &order
-		getItemsByOrderID(db, &order)
+		cacheMap[order.OrderUID] = order
 	}
+
+	err, itemsMap := getAllItems(db, ordersCount)
+	if err != nil {
+		return err
+	}
+	for k, v := range cacheMap {
+		if item, ok := itemsMap[k]; ok {
+			v.Items = append(v.Items, item...)
+			cacheMap[k] = v
+		}
+	}
+
 	return nil
 }
 
-func getItemsByOrderID(db *sql.DB, data *models.Order) {
-	rows, err := db.Query(recieveItemsString, data.OrderUID)
+func getAllItems(db *sql.DB, ordersCount int64) (error, map[string][]models.Item) {
+	rows, err := db.Query(recieveAllItemsString)
 	if err != nil {
-		log.Fatal(err)
+		return err, nil
 	}
+
+	itemsMap := make(map[string][]models.Item, ordersCount)
+
 	for rows.Next() {
 		var item models.Item
-		var unusedValue string
-		err := rows.Scan(
-			&unusedValue,
+		var orderUID string
+		err = rows.Scan(
+			&orderUID,
 			&item.ChrtID, &item.TrackNumber, &item.Price,
 			&item.RID, &item.Name, &item.Sale,
 			&item.Size, &item.TotalPrice, &item.NmID,
 			&item.Brand, &item.Status,
 		)
 		if err != nil {
-			log.Fatal(err)
+			continue
 		}
-		data.Items = append(data.Items, item)
+		if val, ok := itemsMap[orderUID]; ok {
+			val = append(val, item)
+			itemsMap[orderUID] = val
+		} else {
+			itemsMap[orderUID] = []models.Item{item}
+		}
 	}
+	return nil, itemsMap
 }

@@ -1,14 +1,10 @@
 package main
 
 import (
-	"database/sql"
-	"encoding/json"
-	"fmt"
 	"github.com/MikeShekera/L0/database"
-	"github.com/MikeShekera/L0/models"
 	"github.com/MikeShekera/L0/services"
+	"github.com/MikeShekera/L0/transport"
 	_ "github.com/lib/pq"
-	"github.com/nats-io/stan.go"
 	"log"
 )
 
@@ -16,67 +12,32 @@ const (
 	clientID = "main"
 )
 
-type AppStash struct {
-	DbConn      *sql.DB
-	NatsConn    stan.Conn
-	OrdersCache map[string]*models.Order
-}
-
 func main() {
-	err, appStash := newAppStash()
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer appStash.closeAllConnections()
-
-	err = database.StartupCacheFromDB(appStash.DbConn, appStash.OrdersCache)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = services.SubscribeNATS(appStash.NatsConn, appStash.getData)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	services.StartupServ(appStash.OrdersCache)
-}
-
-func (appStash *AppStash) getData(m *stan.Msg) {
-	var order models.Order
-	err := json.Unmarshal(m.Data, &order)
-	if err != nil {
-		fmt.Printf("%s, skipping \n", err)
-		return
-	}
-
-	err = database.WriteToDB(appStash.DbConn, order)
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-func newAppStash() (error, *AppStash) {
 	err, db := database.ConnectDB()
 	if err != nil {
-		return err, nil
+		log.Fatal(err)
 	}
 
 	err, sc := services.ConnectNats(clientID)
 	if err != nil {
-		return err, nil
+		log.Fatal(err)
 	}
 
-	err, uidsCount := database.GetUIDsCount(db)
+	err, appStash := transport.NewAppStash(db, sc, clientID)
 	if err != nil {
 		log.Fatal(err)
 	}
-	ordersCache := make(map[string]*models.Order, uidsCount)
+	defer appStash.CloseAllConnections()
 
-	return nil, &AppStash{DbConn: db, NatsConn: sc, OrdersCache: ordersCache}
-}
+	err = database.StartupCacheFromDB(appStash.DbConn, appStash.OrdersCache, appStash.UIDSCount)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-func (appStash *AppStash) closeAllConnections() {
-	appStash.DbConn.Close()
-	appStash.NatsConn.Close()
+	err = services.SubscribeNATS(appStash.NatsConn, appStash.GetData)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	services.StartupServ(appStash)
 }
