@@ -14,7 +14,6 @@ const (
 	dbname   = "L0"
 
 	ordersInsertString = `
-		BEGIN ;
         INSERT INTO orders (order_uid, track_number, entry, locale, internal_signature, customer_id, delivery_service, shardkey, sm_id, date_created, oof_shard) 
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         ON CONFLICT (order_uid) DO UPDATE SET 
@@ -28,11 +27,9 @@ const (
             sm_id = EXCLUDED.sm_id,
             date_created = EXCLUDED.date_created,
             oof_shard = EXCLUDED.oof_shard;
-			COMMIT ;
     `
 
 	deliveryInsertString = `
-		BEGIN ;
         INSERT INTO delivery (order_uid, name, phone, zip, city, address, region, email)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         ON CONFLICT (order_uid) DO UPDATE SET 
@@ -43,11 +40,9 @@ const (
             address = EXCLUDED.address,
             region = EXCLUDED.region,
             email = EXCLUDED.email;
-		COMMIT ;
     `
 
 	paymentInsertString = `
-		BEGIN ;
         INSERT INTO payment (order_uid, transaction, request_id, currency, provider, amount, payment_dt, bank, delivery_cost, goods_total, custom_fee)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         ON CONFLICT (order_uid) DO 
@@ -63,11 +58,9 @@ const (
             delivery_cost = EXCLUDED.delivery_cost,
             goods_total = EXCLUDED.goods_total,
             custom_fee = EXCLUDED.custom_fee;
-		COMMIT ;
     `
 
-	itemsInsertString = `
-			BEGIN ;		
+	itemsInsertString = `	
             INSERT INTO items (order_uid, chrt_id, track_number, price, rid, name, sale, size, total_price, nm_id, brand, status)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
             ON CONFLICT (order_uid, chrt_id) DO 
@@ -83,7 +76,6 @@ const (
                 nm_id = EXCLUDED.nm_id,
                 brand = EXCLUDED.brand,
                 status = EXCLUDED.status;
-			COMMIT ;
         `
 
 	recieveAllItemsString = `SELECT * FROM items`
@@ -143,41 +135,53 @@ func ConnectDB() (error, *sql.DB) {
 }
 
 func WriteToDB(db *sql.DB, order models.Order) error {
-	_, err := db.Exec(
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(
 		ordersInsertString, order.OrderUID, order.TrackNumber, order.Entry, order.Locale, order.InternalSignature,
 		order.CustomerID, order.DeliveryService, order.ShardKey, order.SmID, order.DateCreated, order.OofShard,
 	)
 	if err != nil {
+		tx.Rollback()
 		return err
 	}
 
 	delivery := order.Delivery
-	_, err = db.Exec(
+	_, err = tx.Exec(
 		deliveryInsertString, order.OrderUID, delivery.Name, delivery.Phone, delivery.Zip, delivery.City,
 		delivery.Address, delivery.Region, delivery.Email,
 	)
 	if err != nil {
+		tx.Rollback()
 		return err
 	}
 
 	payment := order.Payment
-	_, err = db.Exec(
+	_, err = tx.Exec(
 		paymentInsertString, order.OrderUID, payment.Transaction, payment.RequestID, payment.Currency, payment.Provider,
 		payment.Amount, payment.PaymentDt, payment.Bank, payment.DeliveryCost, payment.GoodsTotal, payment.CustomFee,
 	)
 	if err != nil {
+		tx.Rollback()
 		return err
 	}
 
 	for _, item := range order.Items {
-		_, err = db.Exec(
+		_, err = tx.Exec(
 			itemsInsertString, order.OrderUID, item.ChrtID, item.TrackNumber, item.Price, item.RID, item.Name,
 			item.Sale, item.Size, item.TotalPrice, item.NmID, item.Brand, item.Status,
 		)
 		if err != nil {
+			tx.Rollback()
 			return err
 		}
 	}
+
+	err = tx.Commit()
+
 	fmt.Println("Insert Complete")
 	return nil
 }
