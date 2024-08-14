@@ -1,0 +1,62 @@
+{
+  "order_uid": "kler80zxlkj123",
+  "track_number": "TrackNumber003",
+  "entry": "WBIL",
+  "delivery": {
+    "name": "Alice Smith",
+    "phone": "+9722222222",
+    "zip": "7654321",
+    "city": "Tel Aviv",
+    "address": "Dizengoff Street 123",
+    "region": "Tel Aviv District",
+    "email": "alicesmith@example.com"
+  },
+  "payment": {
+    "transaction": "n1m2l3k4j5h6g7f8e9d0",
+    "request_id": "",
+    "currency": "EUR",
+    "provider": "stripe",
+    "amount": 3100,
+    "payment_dt": 1637927727,
+    "bank": "bankhapoalim",
+    "delivery_cost": 300,
+    "goods_total": 2800,
+    "custom_fee": 0
+  },
+  "items": [
+    {
+      "chrt_id": 22334455,
+      "track_number": "TrackNumber002",
+      "price": 1800,
+      "rid": "z1x2c3v4b5n6m7q8w9e0",
+      "name": "Leather Bag",
+      "sale": 15,
+      "size": "M",
+      "total_price": 1530,
+      "nm_id": 7654321,
+      "brand": "Gucci",
+      "status": 102
+    },
+    {
+      "chrt_id": 66778899,
+      "track_number": "TrackNumber002",
+      "price": 1300,
+      "rid": "k1j2h3g4f5d6s7a8p9o0",
+      "name": "Sunglasses",
+      "sale": 20,
+      "size": "One Size",
+      "total_price": 1040,
+      "nm_id": 1357924,
+      "brand": "Ray-Ban",
+      "status": 103
+    }
+  ],
+  "locale": "en",
+  "internal_signature": "",
+  "customer_id": "customer002",
+  "delivery_service": "fedex",
+  "shardkey": "5",
+  "sm_id": 202,
+  "date_created": "2022-02-20T10:45:35Z",
+  "oof_shard": "3"
+}

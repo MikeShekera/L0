@@ -39,6 +39,11 @@ func (appStash *AppStash) GetData(m *stan.Msg) {
 		return
 	}
 
+	if _, ok := appStash.OrdersCache[order.OrderUID]; ok {
+		fmt.Println(fmt.Sprintf("Order with uid: %s already in DB", order.OrderUID))
+		return
+	}
+
 	err = database.WriteToDB(appStash.DbConn, order)
 	if err != nil {
 		fmt.Printf("%s, skipping \n", err)
